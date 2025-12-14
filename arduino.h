@@ -17,11 +17,9 @@ NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 
 int buzz = 8;
 const int maxd = 100;
-const unsigned long interval = 5000;
-unsigned long previousMillis = 0;
-unsigned long startMillis = 0; //start
+const unsigned long interval = 5000; //time interval
 
-float distanceA = 0, distanceB = 0, velocity = 0;
+float distanceA = 0, distanceB = 0, velocity = 0; //values for reading a, b then rate of rise
 
 void setup() {
   Serial.begin(9600);
@@ -34,26 +32,21 @@ void setup() {
   }
   display.clearDisplay();
   display.display();
-
-  startMillis = millis(); // Start elapsed timer
 }
 
-void loop() {
-  unsigned long currentMillis = millis();
-
-  // === Display elapsed time live ===
-
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
+void loop() ;
     distanceA = getAverageDistance();
-    delay(10000);
+    delay(interval); 
     distanceB = getAverageDistance();
 
     float diff = distanceA - distanceB;
     velocity = diff / (interval / 1000.0);
 
-    showOLED(distanceB, velocity);
+float estimatedTime = 0;
+  if (velocity > 0.1) estimatedTime = distanceB / velocity;
+  else estimatedTime = 0;
+
+    showOLED(distanceB, velocity,estimatedTime);
 
     // === Buzzer Alerts ===
     if (distanceB > maxd) {
@@ -76,17 +69,18 @@ void loop() {
     Serial.print(F("Dist A: ")); Serial.println(distanceA);
     Serial.print(F("Dist B: ")); Serial.println(distanceB);
     Serial.print(F("Velocity: ")); Serial.println(velocity);
+  Serial.print(F("Estimated Time: ")); Serial.println(estimatedTime);
     Serial.println(F("--------------------------"));
   }
 }
 
 // === OLED Display ===
-void showOLED(float dist, float vel) {
+void showOLED(float dist, float vel, float estimatedTime) {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
 
-  // Dynamic header based on flood level 🚨
+  // Dynamic header based on flood level 
   display.setCursor(10, 0);
   if (dist > 100) display.print(F(" DANGER LEVEL >100cm"));
   else if (dist > 80) display.print(F(" Risky level >80cm"));
@@ -101,10 +95,9 @@ void showOLED(float dist, float vel) {
 
   // Left box
 display.setCursor(2, 13);
-display.print(F("ETime: "));
+display.print(F("Delay: "));
 display.setCursor(33, 13);
-display.print((millis() - previousMillis) / 1000.0, 1);
-display.print(F("s"));
+display.print(interval);
 
 
   display.setCursor(2, 25);
@@ -113,10 +106,8 @@ display.print(F("s"));
   display.print(F("Time:"));
   display.setTextSize(2);
   display.setCursor(3, 47);
-  display.print((int)dist);
+  display.print(estimatedTime);
   display.setTextSize(1);
-  display.setCursor(40, 53);
-  display.print(F("cm"));
 
   // Right box
   display.setCursor(67, 15);
@@ -155,7 +146,7 @@ float getAverageDistance() {
   return total / (float)valid;
 }
 
-// === Non-blocking buzzer ===
+//Buzzer code because Oled distrupts the buzzer, used Timer free tone and new ping
 void nonBlockingBuzz(int freq, int count, int duration) {
   unsigned long buzzStart = millis();
   for (int i = 0; i < count; i++) {
