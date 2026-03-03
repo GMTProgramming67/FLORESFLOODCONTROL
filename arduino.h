@@ -16,10 +16,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 
 int buzz = 8;
-const int maxd = 100;
-const unsigned long interval = 5000; //time interval
+const int maxd = 70;
+const unsigned long interval = 15000; // time interval in ms
+unsigned long previousMillis = 0;
+unsigned long startMillis = 0;
 
-float distanceA = 0, distanceB = 0, velocity = 0; //values for reading a, b then rate of rise
+float distanceA = 0, distanceB = 0, velocity = 0;
+bool firstReading = true;
 
 void setup() {
   Serial.begin(9600);
@@ -32,21 +35,35 @@ void setup() {
   }
   display.clearDisplay();
   display.display();
+
+  startMillis = millis();
+  distanceA = getAverageDistance(); // Take first reading on startup
 }
 
-void loop() ;
-    distanceA = getAverageDistance();
-    delay(interval); 
-    distanceB = getAverageDistance();
+void loop() {
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    // Shift B to A, take new B
+    if (firstReading) {
+      distanceA = getAverageDistance();
+      firstReading = false;
+    } else {
+      distanceA = distanceB; // Previous B becomes new A
+    }
+
+    distanceB = getAverageDistance(); // Take new reading
 
     float diff = distanceA - distanceB;
     velocity = diff / (interval / 1000.0);
 
-float estimatedTime = 0;
-  if (velocity > 0.1) estimatedTime = distanceB / velocity;
-  else estimatedTime = 0;
+    float estimatedTime = 0;
+    if (velocity > 0.1) estimatedTime = distanceB / velocity;
+    else estimatedTime = 0;
 
-    showOLED(distanceB, velocity,estimatedTime);
+    showOLED(distanceB, velocity, estimatedTime);
 
     // === Buzzer Alerts ===
     if (distanceB > maxd) {
@@ -58,19 +75,13 @@ float estimatedTime = 0;
       nonBlockingBuzz(1000, 5, 300);
     } 
     else if (distanceB > 30) {
-      Serial.println(" Moderate level (30–80cm)");
+      Serial.println(" Moderate level (30-80cm)");
       nonBlockingBuzz(800, 3, 200);
     } 
     else {
       Serial.println(" Safe level (<30cm)");
       nonBlockingBuzz(500, 1, 100);
     }
-
-    Serial.print(F("Dist A: ")); Serial.println(distanceA);
-    Serial.print(F("Dist B: ")); Serial.println(distanceB);
-    Serial.print(F("Velocity: ")); Serial.println(velocity);
-  Serial.print(F("Estimated Time: ")); Serial.println(estimatedTime);
-    Serial.println(F("--------------------------"));
   }
 }
 
@@ -80,7 +91,6 @@ void showOLED(float dist, float vel, float estimatedTime) {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
 
-  // Dynamic header based on flood level 
   display.setCursor(10, 0);
   if (dist > 100) display.print(F(" DANGER LEVEL >100cm"));
   else if (dist > 80) display.print(F(" Risky level >80cm"));
@@ -94,11 +104,10 @@ void showOLED(float dist, float vel, float estimatedTime) {
   display.drawLine(64, 55, 127, 55, SSD1306_WHITE);
 
   // Left box
-display.setCursor(2, 13);
-display.print(F("Delay: "));
-display.setCursor(33, 13);
-display.print(interval);
-
+  display.setCursor(2, 13);
+  display.print(F("Delay: "));
+  display.setCursor(33, 13);
+  display.print(interval);
 
   display.setCursor(2, 25);
   display.print(F("Estimated "));
@@ -113,7 +122,7 @@ display.print(interval);
   display.setCursor(67, 15);
   display.print(F("Velocity:"));
   display.setCursor(68, 26);
-  display.print(vel, 1);
+  display.print(vel, 2);
   display.print(F(" cm/s"));
   display.setCursor(68, 38);
   display.print(F("Current"));
@@ -131,7 +140,6 @@ display.print(interval);
   display.display();
 }
 
-
 // === Distance Average ===
 float getAverageDistance() {
   const int samples = 5;
@@ -146,7 +154,7 @@ float getAverageDistance() {
   return total / (float)valid;
 }
 
-//Buzzer code because Oled distrupts the buzzer, used Timer free tone and new ping
+// === Non-blocking buzzer ===
 void nonBlockingBuzz(int freq, int count, int duration) {
   unsigned long buzzStart = millis();
   for (int i = 0; i < count; i++) {
