@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FloRise — Real-Time Flood Estimation System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --border: #e2e0d8;
+    --text: #1a1917; --muted: #6b6860; --accent: #1d6fa4;
+    --accent-light: #e8f2f9; --danger: #c0392b; --warn: #d47a10; --safe: #2e7d52;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-body); background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.7; min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 1rem; }
+  .logo { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; color: var(--text); text-decoration: none; letter-spacing: -0.02em; flex-shrink: 0; }
+  .logo span { color: var(--accent); }
+  nav { display: flex; align-items: center; gap: 0.2rem; }
+  nav button { background: none; border: none; padding: 0.4rem 0.7rem; font-family: var(--font-body); font-size: 0.83rem; font-weight: 400; color: var(--muted); cursor: pointer; border-radius: 6px; transition: all 0.15s; }
+  nav button:hover { background: var(--bg); color: var(--text); }
+  nav button.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+  .github-link { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--muted); text-decoration: none; padding: 0.35rem 0.7rem; border: 1px solid var(--border); border-radius: 6px; transition: all 0.15s; flex-shrink: 0; }
+  .github-link:hover { border-color: var(--accent); color: var(--accent); }
+  .github-link svg { width: 15px; height: 15px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .hero { max-width: 1100px; margin: 0 auto; padding: 5rem 2rem 4rem; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--accent-light); color: var(--accent); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.3rem 0.75rem; border-radius: 20px; margin-bottom: 1.5rem; }
+  .hero h1 { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 600; line-height: 1.15; letter-spacing: -0.03em; margin-bottom: 1.25rem; }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-desc { color: var(--muted); font-size: 1rem; line-height: 1.8; margin-bottom: 2rem; font-weight: 300; }
+  .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn-primary { background: var(--accent); color: #fff; border: none; padding: 0.6rem 1.4rem; border-radius: 7px; font-family: var(--font-body); font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 0.6rem 1.4rem; border-radius: 7px; font-family: var(--font-body); font-size: 0.9rem; cursor: pointer; transition: all 0.15s; }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .hero-visual { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; position: relative; overflow: hidden; }
+  .hero-visual::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), #5ba8d4); }
+  .sensor-display { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); }
+  .s-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .s-value { color: var(--text); font-size: 1.5rem; font-family: var(--font-display); font-weight: 600; }
+  .s-unit { font-size: 0.85rem; color: var(--muted); margin-left: 2px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; margin-top: 0.5rem; }
+  .status-pill.warn { background: #fef3e2; color: var(--warn); }
+  .spill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .divider-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+  .mini-stat .ms-label { font-size: 0.63rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .mini-stat .ms-val { font-size: 1rem; font-weight: 500; color: var(--text); margin-top: 0.1rem; }
+  .section { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; border-top: 1px solid var(--border); }
+  .section-label { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .section-title { font-family: var(--font-display); font-size: 1.9rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .section-body { color: var(--muted); font-size: 0.975rem; line-height: 1.8; max-width: 700px; font-weight: 300; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; transition: border-color 0.15s; }
+  .card:hover { border-color: #bbb; }
+  .card-icon { width: 36px; height: 36px; background: var(--accent-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; font-size: 1.1rem; }
+  .card h3 { font-size: 0.95rem; font-weight: 500; margin-bottom: 0.4rem; }
+  .card p { font-size: 0.875rem; color: var(--muted); line-height: 1.65; font-weight: 300; }
+  .researcher-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+  .rc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.85rem; }
+  .rc .rname { font-weight: 500; color: var(--text); }
+  .rc .rrole { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+  .rc.lead { border-color: var(--accent); }
+  .rc.lead .rname { color: var(--accent); }
+  .code-wrap { background: #1e1e1e; border-radius: 10px; overflow: hidden; margin-top: 1.5rem; }
+  .code-header { background: #2a2a2a; padding: 0.65rem 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; }
+  .code-filename { font-size: 0.8rem; color: #aaa; font-family: 'Courier New', monospace; }
+  .copy-btn { background: none; border: 1px solid #444; color: #aaa; font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+  .copy-btn:hover { border-color: #888; color: #fff; }
+  pre { padding: 1.5rem; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.75; color: #d4d4d4; }
+  .kw{color:#569cd6}.cm{color:#6a9955}.fn{color:#dcdcaa}.st{color:#ce9178}.nm{color:#b5cea8}.pp{color:#c586c0}
+  code { font-size: 0.83em; background: var(--border); padding: 1px 5px; border-radius: 3px; font-family: 'Courier New', monospace; }
+  .steps { margin-top: 2rem; }
+  .step { display: grid; grid-template-columns: 56px 1fr; gap: 1.5rem; padding: 1.75rem 0; border-bottom: 1px solid var(--border); }
+  .step:last-child { border-bottom: none; }
+  .step-num { width: 40px; height: 40px; background: var(--accent); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 500; flex-shrink: 0; margin-top: 2px; }
+  .step h3 { font-size: 1rem; font-weight: 500; margin-bottom: 0.4rem; }
+  .step p { font-size: 0.9rem; color: var(--muted); line-height: 1.7; font-weight: 300; }
+  .parts-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: 0.88rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .parts-table th { text-align: left; padding: 0.7rem 1rem; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--border); font-weight: 500; }
+  .parts-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); }
+  .parts-table tr:last-child td { border-bottom: none; }
+  .parts-table tr:hover td { background: var(--bg); }
+  .price { font-weight: 500; color: var(--accent); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; text-align: center; }
+  .stat-card .num { font-family: var(--font-display); font-size: 1.7rem; font-weight: 600; color: var(--accent); display: block; }
+  .stat-card .desc { font-size: 0.76rem; color: var(--muted); margin-top: 0.25rem; font-weight: 300; line-height: 1.4; }
+  .result-table { width: 100%; border-collapse: collapse; margin-top: 1.25rem; font-size: 0.88rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .result-table th { background: var(--bg); padding: 0.65rem 1rem; text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+  .result-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); }
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table tr:hover td { background: var(--bg); }
+  .tag { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+  .tag.best { background: #e8f5ee; color: var(--safe); }
+  .tag.good { background: #e8f2f9; color: var(--accent); }
+  .tag.avg  { background: #fef3e2; color: var(--warn); }
+  .tag.danger { background: #fdecea; color: var(--danger); }
+  .finding-box { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin-top: 1.5rem; font-size: 0.9rem; color: var(--accent); }
+  .data-h { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; margin-top: 2.5rem; margin-bottom: 0.4rem; }
+  .data-sub { font-size: 0.875rem; color: var(--muted); font-weight: 300; line-height: 1.7; margin-bottom: 0.6rem; max-width: 700px; }
+  .paper-section { margin-top: 2rem; }
+  .paper-section + .paper-section { margin-top: 2.5rem; padding-top: 2.5rem; border-top: 1px solid var(--border); }
+  .paper-section h3 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; }
+  .paper-section p { font-size: 0.925rem; color: var(--muted); line-height: 1.85; font-weight: 300; }
+  .paper-section p + p { margin-top: 0.75rem; }
+  footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; font-size: 0.8rem; color: var(--muted); margin-top: 2rem; }
+  footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; gap: 2rem; padding: 3rem 1.25rem 2rem; }
+    .header-inner { padding: 0 1rem; flex-wrap: wrap; height: auto; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .section { padding: 2.5rem 1.25rem; }
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .page.active > * { animation: fadeUp 0.3s ease both; }
+  .page.active > *:nth-child(2) { animation-delay: 0.06s; }
+  .page.active > *:nth-child(3) { animation-delay: 0.12s; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#" onclick="showPage('home')">Flo<span>Rise</span></a>
+    <nav>
+      <button class="active" onclick="showPage('home')">Home</button>
+      <button onclick="showPage('code')">Code</button>
+      <button onclick="showPage('build')">How to Build</button>
+      <button onclick="showPage('data')">Data &amp; Results</button>
+      <button onclick="showPage('paper')">Research Paper</button>
+    </nav>
+    <a class="github-link" href="https://github.com/GMTProgramming67" target="_blank">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <div>
+      <div class="hero-badge"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;"></span> Grade 10 Research · Looc Integrated School</div>
+      <h1>Real-time flood<br/><em>progression</em><br/>estimation.</h1>
+      <p class="hero-desc">FloRise uses an ultrasonic sensor and Arduino technology to detect rising water levels, compute Rate of Rise, and predict the Estimated Time for flood water to reach a critical distance — giving communities a window to act before it's too late.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="showPage('data')">View Results</button>
+        <button class="btn-secondary" onclick="showPage('paper')">Read the Paper</button>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="sensor-display">
+        <div class="s-label">Current Water Level</div>
+        <div style="margin-top:0.2rem;"><span class="s-value">42</span><span class="s-unit">cm</span></div>
+        <div><span class="status-pill warn"><span class="spill-dot"></span>Moderate — Rising</span></div>
+        <div class="divider-row">
+          <div class="mini-stat"><div class="ms-label">Rate of Rise</div><div class="ms-val">0.33 <span style="font-size:0.7rem;color:var(--muted)">cm/s</span></div></div>
+          <div class="mini-stat"><div class="ms-label">Est. Time (ET)</div><div class="ms-val">~2.1 <span style="font-size:0.7rem;color:var(--muted)">min</span></div></div>
+          <div class="mini-stat"><div class="ms-label">Optimal Interval</div><div class="ms-val">15 <span style="font-size:0.7rem;color:var(--muted)">sec</span></div></div>
+          <div class="mini-stat"><div class="ms-label">Sensor</div><div class="ms-val" style="font-size:0.82rem;">JSN-SR04T</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Why FloRise</div>
+    <h2 class="section-title">Built for communities<br/>that need early warning.</h2>
+    <p class="section-body">Flooding remains a significant natural hazard in the Philippines, with the NDRRMC reporting that floods impacted over 1.5 million individuals in 2020 alone. Traditional monitoring methods depend on manual water gauges, resulting in delayed reports. FloRise addresses this gap with a real-time, low-cost, automated flood progression estimation system.</p>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">🌊</div><h3>Flood-prone communities</h3><p>The primary beneficiaries. FloRise provides real-time monitoring and Estimated Time computation, allowing residents to prepare, evacuate, and secure properties before water levels reach critical heights.</p></div>
+      <div class="card"><div class="card-icon">🏛️</div><h3>LGUs & disaster response agencies</h3><p>A low-cost prototype supporting existing early warning systems, aligned with the technology-based disaster risk reduction strategies mandated by Republic Act No. 10121.</p></div>
+      <div class="card"><div class="card-icon">🔬</div><h3>Students & future researchers</h3><p>An open, reproducible platform combining ultrasonic sensing, Arduino technology, and Optimal Time Interval computation validated through One-Way ANOVA.</p></div>
+      <div class="card"><div class="card-icon">🌿</div><h3>Environment & public safety</h3><p>By improving real-time flood detection and reducing response time, FloRise may help minimize property damage and support safer, more resilient communities.</p></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">The Researchers</div>
+    <h2 class="section-title">Who built it.</h2>
+    <p class="section-body">FloRise was developed as a Grade 10 research project at Looc Integrated School, Philippines, under the guidance of their research adviser.</p>
+    <div class="researcher-row" style="margin-top:1.5rem;">
+      <div class="rc lead"><div class="rname">Gian Markus C. Taguibao</div><div class="rrole">Lead Researcher</div></div>
+      <div class="rc"><div class="rname">Aldrin Clarence N. Llamazares</div><div class="rrole">Researcher</div></div>
+      <div class="rc"><div class="rname">Mrs. Janice Lee</div><div class="rrole">Research Adviser</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CODE -->
+<div id="page-code" class="page">
+  <div class="section" style="border-top:none;padding-top:3rem;">
+    <div class="section-label">Source Code</div>
+    <h2 class="section-title">FloRise firmware.</h2>
+    <p class="section-body">Written in Arduino IDE. The program uses non-blocking <code>millis()</code>-based state machines — no blocking <code>delay()</code> calls. Obtains stable readings by taking five readings from the JSN-SR04T, averaging only valid readings to minimize sensor noise and ensure measurement accuracy. Full source on GitHub.</p>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-filename">FloRise.ino</span><button class="copy-btn" onclick="copyCode()">Copy</button></div>
+      <pre id="code-block"><span class="pp">#include</span> <span class="st">&lt;Wire.h&gt;</span>
+<span class="pp">#include</span> <span class="st">&lt;Adafruit_GFX.h&gt;</span>
+<span class="pp">#include</span> <span class="st">&lt;Adafruit_SSD1306.h&gt;</span>
+<span class="pp">#include</span> <span class="st">&lt;NewPing.h&gt;</span>
+<span class="pp">#include</span> <span class="st">&lt;TimerFreeTone.h&gt;</span>
+
+<span class="pp">#define</span> TRIG_PIN <span class="nm">9</span>
+<span class="pp">#define</span> ECHO_PIN <span class="nm">10</span>
+<span class="pp">#define</span> MAX_DISTANCE <span class="nm">600</span>
+
+<span class="cm">// Optimal Time Interval: 15s (validated by One-Way ANOVA)</span>
+<span class="kw">const unsigned long</span> interval = <span class="nm">15000</span>;
+<span class="kw">const int</span> SAMPLES = <span class="nm">5</span>;
+<span class="kw">const unsigned long</span> SAMPLE_INTERVAL = <span class="nm">30</span>;
+
+<span class="cm">// Non-blocking sampler state</span>
+<span class="kw">unsigned long</span> lastSampleMillis = <span class="nm">0</span>;
+<span class="kw">unsigned int</span> sampleTotal = <span class="nm">0</span>;
+<span class="kw">int</span> sampleCount = <span class="nm">0</span>, validSamples = <span class="nm">0</span>;
+<span class="kw">bool</span> sampling = <span class="nm">false</span>, samplingForA = <span class="nm">false</span>;
+
+<span class="cm">// Non-blocking buzzer state</span>
+<span class="kw">int</span> buzzFreq, buzzCount, buzzDuration, buzzIndex;
+<span class="kw">bool</span> buzzActive = <span class="nm">false</span>, buzzToneOn = <span class="nm">false</span>;
+<span class="kw">unsigned long</span> buzzMillis = <span class="nm">0</span>;
+
+<span class="cm">// Di = Initial Reading, Df = Final Reading</span>
+<span class="kw">float</span> distanceA = <span class="nm">0</span>, distanceB = <span class="nm">0</span>;
+<span class="kw">bool</span> firstReading = <span class="nm">true</span>;
+
+<span class="kw">void</span> <span class="fn">setup</span>() {
+  Serial.<span class="fn">begin</span>(<span class="nm">115200</span>);
+  <span class="fn">startSampling</span>(<span class="nm">true</span>);
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">unsigned long</span> now = <span class="fn">millis</span>();
+  <span class="fn">handleSampler</span>(now);
+  <span class="fn">handleInterval</span>(now);
+  <span class="fn">handleBuzzer</span>(now);
+}
+
+<span class="kw">void</span> <span class="fn">processReading</span>() {
+  <span class="cm">// Rate of Rise = (Di - Df) / t</span>
+  <span class="kw">float</span> ror = (distanceA - distanceB) / (interval / <span class="nm">1000.0</span>);
+  <span class="cm">// Estimated Time = Df / RoR</span>
+  <span class="kw">float</span> et = (ror &gt; <span class="nm">0.1</span>) ? distanceB / ror : <span class="nm">0</span>;
+  <span class="fn">showOLED</span>(distanceB, ror, et);
+  <span class="cm">// Alerts: Safe &lt;30cm | Moderate 30-70cm | Risky 70-80cm | Danger &gt;80cm</span>
+}</pre>
+    </div>
+    <div style="margin-top:1.5rem;">
+      <a href="https://github.com/GMTProgramming67" target="_blank" style="display:inline-flex;align-items:center;gap:0.5rem;color:var(--accent);font-size:0.9rem;font-weight:500;text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+        github.com/GMTProgramming67 →
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- HOW TO BUILD -->
+<div id="page-build" class="page">
+  <div class="section" style="border-top:none;padding-top:3rem;">
+    <div class="section-label">Hardware Guide</div>
+    <h2 class="section-title">Build your own FloRise.</h2>
+    <p class="section-body">All components are low-cost and locally available, making FloRise an accessible solution for flood-prone communities with limited resources. Total build cost: ₱761.</p>
+
+    <table class="parts-table">
+      <thead><tr><th>Component</th><th>Model / Spec</th><th>Purpose</th><th>Price (PHP)</th></tr></thead>
+      <tbody>
+        <tr><td>Microcontroller</td><td>Arduino Uno Nano</td><td>Controls all components</td><td class="price">₱119</td></tr>
+        <tr><td>Ultrasonic Sensor</td><td>JSN-SR04T (waterproof)</td><td>Detects changes in water level distance</td><td class="price">₱135</td></tr>
+        <tr><td>OLED Display</td><td>SSD1306 · 0.96" · I²C · 128×64</td><td>Displays Rate of Rise, ET, and alert level</td><td class="price">₱99</td></tr>
+        <tr><td>Piezo Buzzer</td><td>Passive buzzer</td><td>Alarm at each flood alert level</td><td class="price">₱99</td></tr>
+        <tr><td>Power Cable &amp; DC Converter</td><td>MB102 breadboard power supply</td><td>Powers the whole circuit including Arduino</td><td class="price">₱250</td></tr>
+        <tr><td>Jumper Wires</td><td>Male-to-male / male-to-female</td><td>Connects each component</td><td class="price">₱59</td></tr>
+        <tr><td><strong>Total</strong></td><td></td><td></td><td class="price"><strong>₱761</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div><h3>Wire the JSN-SR04T ultrasonic sensor</h3><p>Connect JSN-SR04T: VCC → 5V, GND → GND, TRIG → Pin 9, ECHO → Pin 10. The waterproof design allows the sensor to be mounted outside the enclosure, pointed downward above the water channel. The JSN-SR04T emits sound waves and measures the time for them to return after bouncing off the water surface, allowing for precise distance measurement.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div><h3>Connect the OLED display</h3><p>The SSD1306 OLED uses I²C: VCC → 3.3V, GND → GND, SCL → A5, SDA → A4. It is used to display information such as the Rate of Rise, Estimated Time, current water level, and flood alert status. Confirm I²C address is <code>0x3C</code> using an I²C scanner sketch before proceeding.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div><h3>Attach the piezo buzzer</h3><p>Connect the passive piezo buzzer: positive lead → Pin 8, negative → GND. The buzzer serves as the alarm system, triggering different tones across four flood alert conditions — Safe, Moderate, Risky, and Danger — based on the current distance reading of the JSN-SR04T.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div><h3>Connect the MB102 power supply</h3><p>The MB102 breadboard power module is used to power the whole circuit, including the Arduino. Connect it to a 9V DC source or USB. This ensures stable voltage delivery to all components during continuous flood monitoring operation.</p></div></div>
+      <div class="step"><div class="step-num">5</div><div><h3>Install Arduino libraries</h3><p>Open Arduino IDE → Library Manager → install: <strong>Adafruit GFX</strong>, <strong>Adafruit SSD1306</strong>, <strong>NewPing</strong>, and <strong>TimerFreeTone</strong>. All are available via the Arduino Library Manager at no cost.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div><h3>Upload, calibrate, and deploy</h3><p>Upload <code>FloRise.ino</code> from the GitHub repository. Open Serial Monitor at 115200 baud to verify readings. The system takes five readings from the JSN-SR04T per interval, averaging only valid readings to minimize sensor noise. Mount above the flood channel and set the <code>maxd</code> threshold to match your site's danger level (default: 70 cm).</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DATA & RESULTS -->
+<div id="page-data" class="page">
+  <div class="section" style="border-top:none;padding-top:3rem;">
+    <div class="section-label">Results &amp; Discussion</div>
+    <h2 class="section-title">What the data showed.</h2>
+    <p class="section-body">FloRise was evaluated across five tests: Rate of Rise accuracy, ultrasonic sensor accuracy, Optimal Time Interval, measurement range, and Estimated Time prediction reliability. A One-Way ANOVA was applied to determine significant differences in response time across the four tested intervals.</p>
+
+    <div class="stats-row">
+      <div class="stat-card"><span class="num">4,395.77</span><div class="desc">Computed Value (One-Way ANOVA)</div></div>
+      <div class="stat-card"><span class="num">3.2389</span><div class="desc">Tabular Value (α = 0.05)</div></div>
+      <div class="stat-card"><span class="num">15s</span><div class="desc">Optimal Time Interval</div></div>
+      <div class="stat-card"><span class="num">0.96s</span><div class="desc">Fastest response time (15s interval)</div></div>
+      <div class="stat-card"><span class="num">~6%</span><div class="desc">Avg. Estimated Time error rate</div></div>
+      <div class="stat-card"><span class="num">600cm</span><div class="desc">Maximum detection range</div></div>
+    </div>
+
+    <div class="finding-box">
+      <strong>ANOVA conclusion:</strong> Since the CV (4,395.77) is greater than the TV (3.2389) at α = 0.05, the null hypothesis is rejected — confirming a significant difference in the response time of FloRise when using different time intervals. The 15-second interval is the most effective for measuring the Rate of Rise in water levels.
+    </div>
+
+    <h3 class="data-h">Table 1 — Accuracy of the Rate of Rise</h3>
+    <p class="data-sub">Five trials using the Optimal Time Interval. The margin of error decreased from 0.02 cm/s in Trial 1 to a consistent 0.01 cm/s from Trials 2 through 5, demonstrating high accuracy consistent with Wang et al. (2023).</p>
+    <table class="result-table">
+      <thead><tr><th>Trial</th><th>Margin of Error (cm/s)</th><th>Assessment</th></tr></thead>
+      <tbody>
+        <tr><td>Trial 1</td><td>0.02</td><td><span class="tag good">Good</span></td></tr>
+        <tr><td>Trial 2</td><td>0.01</td><td><span class="tag best">Best</span></td></tr>
+        <tr><td>Trial 3</td><td>0.01</td><td><span class="tag best">Best</span></td></tr>
+        <tr><td>Trial 4</td><td>0.01</td><td><span class="tag best">Best</span></td></tr>
+        <tr><td>Trial 5</td><td>0.01</td><td><span class="tag best">Best</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="data-h">Table 2 — Accuracy of the Ultrasonic Sensor (JSN-SR04T)</h3>
+    <p class="data-sub">Object placed at the 50 cm mark across five trials. The sensor displayed high accuracy with measurement errors ranging from 0 cm to 0.75 cm — consistent with previous studies by Nunez (2018), Syakur et al. (2023), and Magnaye et al. (2024).</p>
+    <table class="result-table">
+      <thead><tr><th>Trial</th><th>Actual Distance</th><th>Error (cm)</th><th>Assessment</th></tr></thead>
+      <tbody>
+        <tr><td>Trial 1</td><td>50 cm</td><td>0.00</td><td><span class="tag best">Exact</span></td></tr>
+        <tr><td>Trial 2</td><td>50 cm</td><td>0.25</td><td><span class="tag best">Excellent</span></td></tr>
+        <tr><td>Trial 3</td><td>50 cm</td><td>0.50</td><td><span class="tag good">Good</span></td></tr>
+        <tr><td>Trial 4</td><td>50 cm</td><td>0.75</td><td><span class="tag good">Good</span></td></tr>
+        <tr><td>Trial 5</td><td>50 cm</td><td>0.25</td><td><span class="tag best">Excellent</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="data-h">Table 3 — Optimal Time Interval for Rate of Rise</h3>
+    <p class="data-sub">Four intervals tested, five trials each. The 15-second interval yielded the fastest response time of 0.96 seconds — providing enough time for the sensor to stabilize between readings while still capturing meaningful changes in water level.</p>
+    <table class="result-table">
+      <thead><tr><th>Time Interval</th><th>Avg. Response Time</th><th>Assessment</th></tr></thead>
+      <tbody>
+        <tr><td>5 seconds</td><td>Unstable / high error</td><td><span class="tag danger">Poor</span></td></tr>
+        <tr><td>10 seconds</td><td>Moderate</td><td><span class="tag avg">Fair</span></td></tr>
+        <tr><td>15 seconds</td><td>0.96 seconds</td><td><span class="tag best">Optimal</span></td></tr>
+        <tr><td>20 seconds</td><td>Sluggish / higher error</td><td><span class="tag avg">Poor</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="data-h">Table 4 — Measurement Range of the JSN-SR04T</h3>
+    <p class="data-sub">Object placed at 100 cm intervals from 100 cm to 700 cm, five trials per distance. The sensor successfully detected objects from 100 cm up to 600 cm; detection failed at 700 cm. This range is sufficient for small- to medium-scale flood monitoring applications.</p>
+    <table class="result-table">
+      <thead><tr><th>Distance</th><th>Detection (out of 5 trials)</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>100 cm</td><td>5 / 5</td><td><span class="tag best">Detected</span></td></tr>
+        <tr><td>200 cm</td><td>5 / 5</td><td><span class="tag best">Detected</span></td></tr>
+        <tr><td>300 cm</td><td>5 / 5</td><td><span class="tag best">Detected</span></td></tr>
+        <tr><td>400 cm</td><td>5 / 5</td><td><span class="tag best">Detected</span></td></tr>
+        <tr><td>500 cm</td><td>5 / 5</td><td><span class="tag best">Detected</span></td></tr>
+        <tr><td>600 cm</td><td>5 / 5</td><td><span class="tag best">Detected</span></td></tr>
+        <tr><td>700 cm</td><td>0 / 5</td><td><span class="tag danger">Not Detected</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="data-h">Table 5 — Accuracy of Estimated Time to Reach 70 cm</h3>
+    <p class="data-sub">Bucket filled with constant water flow; actual time to rise to 70 cm recorded against FloRise's Estimated Time. The margin of error decreased progressively from 32.62 seconds in Trial 1 to 16.11 seconds in Trial 5 — an overall average margin of error of 24.14 seconds, representing an error rate of approximately 6%.</p>
+    <table class="result-table">
+      <thead><tr><th>Trial</th><th>Margin of Error (seconds)</th><th>Error Rate</th></tr></thead>
+      <tbody>
+        <tr><td>Trial 1</td><td>32.62</td><td><span class="tag avg">~9.8%</span></td></tr>
+        <tr><td>Trial 2</td><td>27.40</td><td><span class="tag avg">~8.2%</span></td></tr>
+        <tr><td>Trial 3</td><td>23.18</td><td><span class="tag good">~7.0%</span></td></tr>
+        <tr><td>Trial 4</td><td>21.39</td><td><span class="tag good">~6.4%</span></td></tr>
+        <tr><td>Trial 5</td><td>16.11</td><td><span class="tag best">~4.8%</span></td></tr>
+        <tr><td><strong>Average</strong></td><td><strong>24.14 seconds</strong></td><td><span class="tag good">~6%</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="data-h">Flood Alert Classification</h3>
+    <p class="data-sub">The program defines four flood alert conditions that trigger the buzzer based on the current distance reading of the JSN-SR04T ultrasonic sensor.</p>
+    <table class="result-table">
+      <thead><tr><th>Level</th><th>Distance Reading</th><th>Buzzer Response</th><th>OLED Status</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag best">Safe</span></td><td>&lt; 30 cm</td><td>1 beep · 500 Hz</td><td>Safe level &lt;30cm</td></tr>
+        <tr><td><span class="tag good">Moderate</span></td><td>30 – 70 cm</td><td>3 beeps · 800 Hz</td><td>Moderate level</td></tr>
+        <tr><td><span class="tag avg">Risky</span></td><td>70 – 80 cm</td><td>5 beeps · 1000 Hz</td><td>Risky level &gt;80cm</td></tr>
+        <tr><td><span class="tag danger">Danger</span></td><td>&gt; 80 cm</td><td>8 beeps · 1500 Hz</td><td>DANGER LEVEL &gt;100cm</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RESEARCH PAPER -->
+<div id="page-paper" class="page">
+  <div class="section" style="border-top:none;padding-top:3rem;">
+    <div class="section-label">Full Research Paper</div>
+    <h2 class="section-title">FloRise: Real-Time Flood Estimation System Using Ultrasonic Sensing and Arduino Technology via Rate of Rise Analysis.</h2>
+
+    <div class="researcher-row" style="margin-top:1.5rem;">
+      <div class="rc lead"><div class="rname">Gian Markus C. Taguibao</div><div class="rrole">Lead Researcher · Looc Integrated School</div></div>
+      <div class="rc"><div class="rname">Aldrin Clarence N. Llamazares</div><div class="rrole">Researcher · Looc Integrated School</div></div>
+      <div class="rc"><div class="rname">Mrs. Janice Lee</div><div class="rrole">Research Adviser</div></div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--muted);margin-top:0.75rem;margin-bottom:2rem;">gianmarkustaguibao@gmail.com · aldrinllamazares6@gmail.com</p>
+
+    <div class="paper-section">
+      <h3>Abstract</h3>
+      <p>This study aims to design and develop a flood monitoring prototype capable of estimating real-time flood progression through Rate of Rise computation. The study starts with the researchers creating a formula that will measure the Rate of Rise, then creating the product along with the Estimated Time Formula. The system used an ultrasonic sensor (JSN-SR04T) along with an Arduino Uno Nano as its microcontroller, an OLED display, and a buzzer alarm to alert civilians. To assess the system, four different time intervals were tested across five trials each to determine the Optimal Time Interval for Rate of Rise measurement, with the Margin of Error (MOE) recorded for each trial and then averaged. Results showed that the system effectively measured water level changes and provided consistent, real-time predictions of flood progression with minimal error and low response delay. The findings indicate that FloRise is a reliable, low-cost, and efficient flood estimation device that can be used as an early warning system for communities that are often at risk of floods.</p>
+      <p style="font-style:italic;font-size:0.875rem;margin-top:0.75rem;color:var(--muted);">Keywords: Arduino, Flood Monitoring, Rate of Rise, Automated, Prediction, Estimated Time</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Introduction</h3>
+      <p>Flooding remains a significant natural hazard in the Philippines, a country frequently affected by typhoons and heavy rainfall. In 2020, the National Disaster Risk Reduction and Management Council (NDRRMC) reported that floods impacted over 1.5 million individuals nationwide. Flooding is frequent in urban areas, where heavy rainfall along with solid waste clogging canals prevents proper rainwater runoff. Traditional flood monitoring methods often depend on manual water gauges, which can result in delayed reports. Consequently, the need for real-time, automated flood systems has become increasingly important.</p>
+      <p>Floods pose serious dangers to life, property, and public health, often leading to damage of infrastructure and the spread of waterborne diseases. The Philippines has established legal frameworks to address these risks, notably Republic Act No. 10121, or the Philippine Disaster Risk Reduction and Management Act of 2010, which mandates the development of disaster preparedness and response systems including flood risk management and the utilization of scientific knowledge and technology in early warning systems.</p>
+      <p>This study aims to use ultrasonic sensing powered by Arduino Technology and utilize Rate of Rise in water levels to estimate the amount of time the water levels reach a certain distance. By utilizing Rate of Rise, the research provides real-time estimations and builds a flood progression system where citizens can be notified, potentially improving flood preparedness and reducing property damage while being cost efficient, affordable, and easy to produce.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Statement of the Problem</h3>
+      <p>The study aims to design and develop a real-time flood progression estimation system using ultrasonic sensing and Arduino technology, utilizing the Rate of Rise to find the Estimated Time for peak flood arrival. Specifically, the researchers aimed to answer: (1) How accurate is the Rate of Rise? (2) How effective is FloRise in terms of ultrasonic sensor accuracy, optimal time interval, and measurement range? (3) How accurate is the Estimated Time for flood water to reach a set distance of 70 cm? (4) Is there a significant difference in the response time of FloRise when using different time intervals?</p>
+      <p><strong style="font-weight:500;">Hypothesis:</strong> There is no significant difference in the accuracy of the response time of FloRise when using different time intervals.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Methodology</h3>
+      <p>The first phase utilized a Comparative Experimental Design to determine the most accurate time interval by testing four different intervals (5s, 10s, 15s, 20s) across five trials each, with the Margin of Error recorded for each trial and averaged. The second phase applied a Repeated Measures Design (RMD), where the most accurate interval was consistently used across all subsequent tests, with five trials conducted per test to ensure reliability and consistency of results.</p>
+      <p>This study was conducted at the researchers' houses in San Isidro Heights and Mabuhay Subdivision, Cabuyao, Laguna, and at Looc Integrated School. The researchers used the following formulas:</p>
+      <p><strong style="font-weight:500;">Rate of Rise (RoR):</strong> (Di − Df) / t = RoR — where Di = Initial Reading, Df = Final Reading, t = Time Interval.</p>
+      <p><strong style="font-weight:500;">Estimated Time (ET):</strong> Df / RoR = ET — the predicted time for flood water to reach the maximum set distance of 70 cm.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Results &amp; Discussion</h3>
+      <p>The Rate of Rise accuracy test showed a margin of error that decreased from 0.02 cm/s in Trial 1 to a consistent 0.01 cm/s from Trials 2 through 5. The ultrasonic sensor demonstrated measurement errors ranging from 0 cm to 0.75 cm at a fixed distance of 50 cm — consistent with previous studies reporting minimal error in ultrasonic sensor-based flood monitoring systems (Nunez, 2018; Syakur et al., 2023; Magnaye et al., 2024).</p>
+      <p>The 15-second interval yielded the fastest response time of 0.96 seconds among all tested intervals, as it provides enough time for the sensor to stabilize between readings. The JSN-SR04T successfully detected objects from 100 cm up to 600 cm, while detection failed at 700 cm, confirming that FloRise operates within the practical bounds of ultrasonic sensing for real-time water level estimation.</p>
+      <p>For Estimated Time prediction, the margin of error decreased progressively from 32.62 seconds in Trial 1 to 16.11 seconds in Trial 5, with an overall average margin of error of 24.14 seconds representing an error rate of approximately 6%. The One-Way ANOVA produced a Computed Value of 4,395.77 against a Tabular Value of 3.2389, resulting in rejection of the null hypothesis at α = 0.05.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Conclusion</h3>
+      <p>The One-Way ANOVA test concluded that there is a significant difference in the accuracy of the response time of FloRise when using different time intervals. Since the CV (4,395.77) is greater than the TV (3.2389), the null hypothesis is rejected at α = 0.05 across the 5-second, 10-second, 15-second, and 20-second intervals, confirming that the 15-second interval is the most effective for measuring the Rate of Rise. It is short enough to capture meaningful changes in water level, but long enough to produce stable and accurate readings. FloRise is a reliable, low-cost, and efficient flood estimation device that can serve as an early warning system for communities at risk of floods.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Recommendations</h3>
+      <p>Based on the findings, the researchers recommend: (1) Replacing the OLED display with a GSM Module to transmit flood data directly to mobile phones, and the use of an ESP32 microcontroller with built-in WiFi and Bluetooth for wireless data transmission. (2) Integrating a solar panel as a power source to ensure FloRise remains operational during power outages caused by flooding. (3) Future researchers are encouraged to conduct testing in actual flood-prone areas rather than a controlled environment to validate real-world accuracy, and to test FloRise under different weather conditions such as rain and wind to evaluate its outdoor performance.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>Acknowledgment</h3>
+      <p>The researchers would like to express their gratitude to God, for guiding and giving the researchers the wisdom and strength to make this study possible; to Dr. Ma. Luisa J. Rosales and Sir Lenin P. Rodriguez, for allowing the researchers to conduct this study and providing the necessary facilities; to Mrs. Lorna V. Gayla, for her support and encouragement; to Mrs. Janice Lee, the research adviser and class adviser, for her support and patience; and to the researchers' families, friends, and classmates — particularly Justine Matthew Veluz, Nathaniel Jr. Dela Cruz, Ryan Gabriel Castillo, Kyle Andrei Cariaga, and John Lawrence Camacho — for their constant support throughout the study.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>References</h3>
+      <p style="line-height:2.2;">
+        Cadeliña, M. R. L., &amp; Perin, M. A. D. (2022). Flood Alarm: Arduino-based Water Level Indicator with buzzer for flood warning purposes. <em>Bohol Island State University.</em><br/>
+        Magnaye et al. (2024). Automated flood water level sensor and alarm system using Arduino. <em>International Journal of Research Studies in Educational Technology, 8</em>(3).<br/>
+        National Disaster Risk Reduction and Management Council. (2020). <em>Annual Report 2020.</em> https://www.ndrrmc.gov.ph<br/>
+        Nunez, M. A. (2018). Flood monitoring and early warning system using ultrasonic sensor. <em>Materials Science and Engineering, 325,</em> 020202.<br/>
+        Syakur, Y. A., Padang, E., &amp; Afkril, B. (2023). Design of a river water level measuring instrument using AJ-SR04T ultrasonic sensor. <em>Jurnal Natural, 19</em>(1), 60–67.<br/>
+        Wang, H., et al. (2023). Predicting the flood peak arrival time via a machine learning model with rate-of-change features. <em>Journal of Water and Climate Change, 16</em>(1), 142–156.
+      </p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>FloRise · Looc Integrated School · Grade 10 Research ·
+    <a href="https://github.com/GMTProgramming67" target="_blank">github.com/GMTProgramming67</a>
+  </p>
+</footer>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    const map = { home:0, code:1, build:2, data:3, paper:4 };
+    document.querySelectorAll('nav button')[map[id]].classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function copyCode() {
+    navigator.clipboard.writeText(document.getElementById('code-block').innerText).then(() => {
+      const b = document.querySelector('.copy-btn');
+      b.textContent = 'Copied!';
+      setTimeout(() => b.textContent = 'Copy', 2000);
+    });
+  }
+</script>
+</body>
+</html>
